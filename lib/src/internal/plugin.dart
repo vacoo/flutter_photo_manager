@@ -281,10 +281,12 @@ class PhotoManagerPlugin with BasePlugin, IosPlugin, AndroidPlugin, OhosPlugin {
     required ThumbnailOption option,
     PMProgressHandler? progressHandler,
     PMCancelToken? cancelToken,
+    bool networkAccessAllowed = true,
   }) {
     final Map<String, dynamic> params = <String, dynamic>{
       'id': id,
       'option': option.toMap(),
+      'networkAccessAllowed': networkAccessAllowed,
     };
     _injectProgressHandlerParams(params, progressHandler);
     _setCancelToken(params, cancelToken);
@@ -320,12 +322,14 @@ class PhotoManagerPlugin with BasePlugin, IosPlugin, AndroidPlugin, OhosPlugin {
     int subtype = 0,
     PMDarwinAVFileType? darwinFileType,
     PMCancelToken? cancelToken,
+    bool networkAccessAllowed = true,
   }) async {
     final params = <String, dynamic>{
       'id': id,
       'isOrigin': isOrigin,
       'subtype': subtype,
       'darwinFileType': darwinFileType?.value ?? 0,
+      'networkAccessAllowed': networkAccessAllowed,
     };
     _injectProgressHandlerParams(params, progressHandler);
     _setCancelToken(params, cancelToken);

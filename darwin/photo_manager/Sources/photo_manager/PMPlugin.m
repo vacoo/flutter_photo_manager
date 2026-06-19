@@ -446,10 +446,13 @@
     } else if ([call.method isEqualToString:@"getThumb"]) {
         NSString *assetId = call.arguments[@"id"];
         NSDictionary *dict = call.arguments[@"option"];
+        NSNumber *networkAccessAllowedValue = call.arguments[@"networkAccessAllowed"];
+        BOOL networkAccessAllowed = networkAccessAllowedValue == nil ? YES : [networkAccessAllowedValue boolValue];
         PMProgressHandler *progressHandler = [self getProgressHandlerFromDict:call.arguments];
         PMThumbLoadOption *option = [PMThumbLoadOption optionDict:dict];
         [manager getThumbWithId:assetId
                          option:option
+           networkAccessAllowed:networkAccessAllowed
                   resultHandler:handler
                 progressHandler:progressHandler];
     } else if ([call.method isEqualToString:@"getFullFile"]) {
@@ -457,11 +460,14 @@
         BOOL isOrigin = [call.arguments[@"isOrigin"] boolValue];
         int subtype = [call.arguments[@"subtype"] intValue];
         AVFileType fileType = [PMConvertUtils convertNumberToAVFileType:[call.arguments[@"darwinFileType"] intValue]];
+        NSNumber *networkAccessAllowedValue = call.arguments[@"networkAccessAllowed"];
+        BOOL networkAccessAllowed = networkAccessAllowedValue == nil ? YES : [networkAccessAllowedValue boolValue];
         PMProgressHandler *progressHandler = [self getProgressHandlerFromDict:call.arguments];
         [manager getFullSizeFileWithId:assetId
                               isOrigin:isOrigin
                                subtype:subtype
                               fileType:fileType
+                   networkAccessAllowed:networkAccessAllowed
                          resultHandler:handler
                        progressHandler:progressHandler];
     } else if ([call.method isEqualToString:@"fetchPathProperties"]) {

@@ -592,6 +592,9 @@ class AssetEntity {
   /// [darwinFileType] will try to define the export format when
   /// exporting assets, such as exporting a MOV file to MP4.
   ///
+  /// [networkAccessAllowed] only takes effect on iOS/macOS. When it's false,
+  /// Photos won't download assets from iCloud while obtaining the file.
+  ///
   /// See also:
   ///  * [file] which can obtain the compressed file.
   ///  * [fileWithSubtype] which can obtain the compressed file with subtype.
@@ -604,6 +607,7 @@ class AssetEntity {
     PMProgressHandler? progressHandler,
     PMCancelToken? cancelToken,
     PMDarwinAVFileType? darwinFileType,
+    bool networkAccessAllowed = true,
   }) {
     return getFile(
       isOrigin: isOrigin,
@@ -611,6 +615,7 @@ class AssetEntity {
       progressHandler: progressHandler,
       darwinFileType: darwinFileType,
       cancelToken: cancelToken,
+      networkAccessAllowed: networkAccessAllowed,
     );
   }
 
@@ -642,6 +647,8 @@ class AssetEntity {
   ///  * [thumbnailData] which obtain the thumbnail data with fixed size.
   ///  * [thumbnailDataWithOption] which accepts customized [ThumbnailOption].
   ///  * [cancelToken] is used to cancel the thumbnail loading process.
+  ///  * [networkAccessAllowed] only takes effect on iOS/macOS. When it's false,
+  ///    Photos won't download assets from iCloud while obtaining the thumbnail.
   Future<typed_data.Uint8List?> thumbnailDataWithSize(
     ThumbnailSize size, {
     ThumbnailFormat format = ThumbnailFormat.jpeg,
@@ -649,6 +656,7 @@ class AssetEntity {
     PMProgressHandler? progressHandler,
     PMCancelToken? cancelToken,
     int frame = 0,
+    bool networkAccessAllowed = true,
   }) {
     assert(() {
       _checkThumbnailAssertion();
@@ -683,6 +691,7 @@ class AssetEntity {
       option,
       progressHandler: progressHandler,
       cancelToken: cancelToken,
+      networkAccessAllowed: networkAccessAllowed,
     );
   }
 
@@ -692,10 +701,13 @@ class AssetEntity {
   ///  * [thumbnailData] which obtain the thumbnail data with fixed size.
   ///  * [thumbnailDataWithSize] which is a common method to obtain thumbnails.
   ///  * [cancelToken] is used to cancel the thumbnail loading process.
+  ///  * [networkAccessAllowed] only takes effect on iOS/macOS. When it's false,
+  ///    Photos won't download assets from iCloud while obtaining the thumbnail.
   Future<typed_data.Uint8List?> thumbnailDataWithOption(
     ThumbnailOption option, {
     PMProgressHandler? progressHandler,
     PMCancelToken? cancelToken,
+    bool networkAccessAllowed = true,
   }) {
     assert(() {
       _checkThumbnailAssertion();
@@ -714,6 +726,7 @@ class AssetEntity {
       option: option,
       progressHandler: progressHandler,
       cancelToken: cancelToken,
+      networkAccessAllowed: networkAccessAllowed,
     );
   }
 
@@ -793,12 +806,15 @@ class AssetEntity {
   ///  * [darwinFileType] will try to define the export format when
   ///    exporting assets, such as exporting a MOV file to MP4.
   ///  * [cancelToken] is used to cancel the file loading process.
+  ///  * [networkAccessAllowed] only takes effect on iOS/macOS. When it's false,
+  ///    Photos won't download assets from iCloud while obtaining the file.
   Future<File?> getFile({
     bool isOrigin = false,
     PMProgressHandler? progressHandler,
     int subtype = 0,
     PMDarwinAVFileType? darwinFileType,
     PMCancelToken? cancelToken,
+    bool networkAccessAllowed = true,
   }) async {
     assert(
       _platformMatched,
@@ -814,6 +830,7 @@ class AssetEntity {
       subtype: subtype,
       darwinFileType: darwinFileType,
       cancelToken: cancelToken,
+      networkAccessAllowed: networkAccessAllowed,
     );
     if (path == null) {
       return null;

@@ -432,21 +432,25 @@
     [cacheContainer clearCache];
 }
 
-- (void)getThumbWithId:(NSString *)assetId option:(PMThumbLoadOption *)option resultHandler:(PMResultHandler *)handler progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler {
+- (void)getThumbWithId:(NSString *)assetId
+                option:(PMThumbLoadOption *)option
+  networkAccessAllowed:(BOOL)networkAccessAllowed
+         resultHandler:(PMResultHandler *)handler
+       progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler {
     PMAssetEntity *entity = [self getAssetEntity:assetId];
     if (entity && entity.phAsset) {
         PHAsset *asset = entity.phAsset;
-        [self fetchThumb:asset option:option resultHandler:handler progressHandler:progressHandler];
+        [self fetchThumb:asset option:option networkAccessAllowed:networkAccessAllowed resultHandler:handler progressHandler:progressHandler];
     } else {
         [handler replyError:[NSString stringWithFormat:@"Asset %@ is not found", assetId]];
     }
 }
 
-- (void)fetchThumb:(PHAsset *)asset option:(PMThumbLoadOption *)option resultHandler:(PMResultHandler *)handler progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler {
+- (void)fetchThumb:(PHAsset *)asset option:(PMThumbLoadOption *)option networkAccessAllowed:(BOOL)networkAccessAllowed resultHandler:(PMResultHandler *)handler progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler {
     PHImageRequestOptions *requestOptions = [PHImageRequestOptions new];
     requestOptions.deliveryMode = option.deliveryMode;
     requestOptions.resizeMode = option.resizeMode;
-    [requestOptions setNetworkAccessAllowed:YES];
+    [requestOptions setNetworkAccessAllowed:networkAccessAllowed];
     
     __block double lastProgress = 0.0;
     [self notifyProgress:progressHandler progress:0 state:PMProgressStatePrepare];
@@ -531,6 +535,7 @@
                      isOrigin:(BOOL)isOrigin
                       subtype:(int)subtype
                      fileType:(AVFileType)fileType
+          networkAccessAllowed:(BOOL)networkAccessAllowed
                 resultHandler:(PMResultHandler *)handler
               progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler {
     PMAssetEntity *entity = [self getAssetEntity:assetId];
@@ -538,28 +543,28 @@
         PHAsset *asset = entity.phAsset;
         if (@available(iOS 9.1, *)) {
             if (asset.isLivePhoto && (subtype & PHAssetMediaSubtypePhotoLive) == PHAssetMediaSubtypePhotoLive) {
-                [self fetchLivePhotosFile:asset handler:handler progressHandler:progressHandler withScheme:NO fileType:fileType];
+                [self fetchLivePhotosFile:asset handler:handler progressHandler:progressHandler withScheme:NO fileType:fileType networkAccessAllowed:networkAccessAllowed];
                 return;
             }
         }
         if (@available(macOS 14.0, *)) {
             if (asset.isLivePhoto && (subtype & PHAssetMediaSubtypePhotoLive) == PHAssetMediaSubtypePhotoLive) {
-                [self fetchLivePhotosFile:asset handler:handler progressHandler:progressHandler withScheme:NO fileType:fileType];
+                [self fetchLivePhotosFile:asset handler:handler progressHandler:progressHandler withScheme:NO fileType:fileType networkAccessAllowed:networkAccessAllowed];
                 return;
             }
         }
         if (asset.isVideo) {
             if (isOrigin) {
-                [self fetchOriginVideoFile:asset handler:handler progressHandler:progressHandler fileType:fileType];
+                [self fetchOriginVideoFile:asset handler:handler progressHandler:progressHandler fileType:fileType networkAccessAllowed:networkAccessAllowed];
             } else {
-                [self fetchFullSizeVideo:asset handler:handler progressHandler:progressHandler withScheme:NO fileType:fileType];
+                [self fetchFullSizeVideo:asset handler:handler progressHandler:progressHandler withScheme:NO fileType:fileType networkAccessAllowed:networkAccessAllowed];
             }
             return;
         }
         if (isOrigin) {
-            [self fetchOriginImageFile:asset resultHandler:handler progressHandler:progressHandler];
+            [self fetchOriginImageFile:asset resultHandler:handler progressHandler:progressHandler networkAccessAllowed:networkAccessAllowed];
         } else {
-            [self fetchFullSizeImageFile:asset resultHandler:handler progressHandler:progressHandler];
+            [self fetchFullSizeImageFile:asset resultHandler:handler progressHandler:progressHandler networkAccessAllowed:networkAccessAllowed];
         }
         return;
     }
@@ -570,7 +575,8 @@
                     handler:(PMResultHandler *)handler
             progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler
                  withScheme:(BOOL)withScheme
-                   fileType:(AVFileType)fileType {
+                   fileType:(AVFileType)fileType
+       networkAccessAllowed:(BOOL)networkAccessAllowed {
     PHAssetResource *resource = [asset getLivePhotosResource];
     if (!resource) {
         [handler replyError:[NSString stringWithFormat:@"Asset %@ does not have a Live-Photo resource.", asset.localIdentifier]];
@@ -583,6 +589,7 @@
                         withScheme:withScheme
                           isOrigin:YES
                           fileType:fileType
+              networkAccessAllowed:networkAccessAllowed
                              block:^(NSString *path, NSObject *error) {
         if (path) {
             [handler reply:path];
@@ -595,7 +602,8 @@
 - (void)fetchOriginVideoFile:(PHAsset *)asset
                      handler:(PMResultHandler *)handler
              progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler
-                    fileType:(AVFileType)fileType {
+                    fileType:(AVFileType)fileType
+        networkAccessAllowed:(BOOL)networkAccessAllowed {
     PHAssetResource *resource = [asset getCurrentResource];
     if (!resource) {
         [handler replyError:[NSString stringWithFormat:@"Asset %@ does not have available resources.", asset.localIdentifier]];
@@ -607,6 +615,7 @@
                         withScheme:NO
                           isOrigin:YES
                           fileType:fileType
+              networkAccessAllowed:networkAccessAllowed
                              block:^(NSString *path, NSObject *error) {
         if (path) {
             [handler reply:path];
@@ -620,12 +629,14 @@
                    handler:(PMResultHandler *)handler
            progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler
                 withScheme:(BOOL)withScheme
-                  fileType:(AVFileType)fileType {
+                  fileType:(AVFileType)fileType
+      networkAccessAllowed:(BOOL)networkAccessAllowed {
     [self exportAssetToFile:asset
             resultHandler:handler
             progressHandler:progressHandler
                  withScheme:withScheme
                    fileType:fileType
+       networkAccessAllowed:networkAccessAllowed
                       block:^(NSString *path, NSObject *error) {
         if (path) {
             [handler reply:path];
@@ -641,6 +652,7 @@
                       withScheme:(BOOL)withScheme
                         isOrigin:(BOOL)isOrigin
                         fileType:(AVFileType)fileType
+            networkAccessAllowed:(BOOL)networkAccessAllowed
                            block:(void (^)(NSString *path, NSObject *error))block {
     NSFileManager *fileManager = NSFileManager.defaultManager;
     NSString *path = [self makeAssetOutputPath:asset
@@ -694,7 +706,7 @@
     }
     
     PHAssetResourceRequestOptions *options = [PHAssetResourceRequestOptions new];
-    [options setNetworkAccessAllowed:YES];
+    [options setNetworkAccessAllowed:networkAccessAllowed];
     
     __block double lastProgress = 0.0;
     [self notifyProgress:progressHandler progress:0 state:PMProgressStatePrepare];
@@ -763,6 +775,7 @@
           progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler
                withScheme:(BOOL)withScheme
                  fileType:(AVFileType)fileType
+     networkAccessAllowed:(BOOL)networkAccessAllowed
                     block:(void (^)(NSString *path, NSObject *error))block {
     NSFileManager *manager = NSFileManager.defaultManager;
     NSString *path = [self makeAssetOutputPath:asset resource:nil isOrigin:NO fileType:fileType manager:manager];
@@ -777,7 +790,7 @@
 
     PHVideoRequestOptions *options = [PHVideoRequestOptions new];
     [options setDeliveryMode:PHVideoRequestOptionsDeliveryModeAutomatic];
-    [options setNetworkAccessAllowed:YES];
+    [options setNetworkAccessAllowed:networkAccessAllowed];
     [options setVersion:PHVideoRequestOptionsVersionCurrent];
 
     __block double lastProgress = 0.0;
@@ -1046,7 +1059,7 @@
     return resource.type == PHAssetResourceTypePhoto || resource.type == PHAssetResourceTypeFullSizePhoto;
 }
 
-- (void)fetchOriginImageFile:(PHAsset *)asset resultHandler:(PMResultHandler *)handler progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler {
+- (void)fetchOriginImageFile:(PHAsset *)asset resultHandler:(PMResultHandler *)handler progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler networkAccessAllowed:(BOOL)networkAccessAllowed {
     PHAssetResource *imageResource = [asset getCurrentResource];
     if (!imageResource) {
         [handler replyError:[NSString stringWithFormat:@"Asset %@ does not have available resources.", asset.localIdentifier]];
@@ -1065,7 +1078,7 @@
     }
     
     PHAssetResourceRequestOptions *options = [PHAssetResourceRequestOptions new];
-    [options setNetworkAccessAllowed:YES];
+    [options setNetworkAccessAllowed:networkAccessAllowed];
     
     __block double lastProgress = 0.0;
     [self notifyProgress:progressHandler progress:0 state:PMProgressStatePrepare];
@@ -1103,10 +1116,11 @@
 
 - (void)fetchFullSizeImageFile:(PHAsset *)asset
                  resultHandler:(PMResultHandler *)handler
-               progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler {
+               progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler
+          networkAccessAllowed:(BOOL)networkAccessAllowed {
     PHImageRequestOptions *options = [PHImageRequestOptions new];
     [options setDeliveryMode:PHImageRequestOptionsDeliveryModeOpportunistic];
-    [options setNetworkAccessAllowed:YES];
+    [options setNetworkAccessAllowed:networkAccessAllowed];
     [options setResizeMode:PHImageRequestOptionsResizeModeNone];
     [options setSynchronous:YES];
     [options setVersion:PHImageRequestOptionsVersionCurrent];
@@ -1547,7 +1561,7 @@
         if ((asset.mediaSubtypes & PHAssetMediaSubtypePhotoLive) == PHAssetMediaSubtypePhotoLive) {
             // https://github.com/fluttercandies/flutter_photo_manager/issues/1196
             if (@available(iOS 18.0, *)) {
-                [self fetchLivePhotosFile:asset handler:handler progressHandler:progressHandler withScheme:YES fileType:nil];
+                [self fetchLivePhotosFile:asset handler:handler progressHandler:progressHandler withScheme:YES fileType:nil networkAccessAllowed:YES];
                 return;
             }
             PHAssetResource *resource = [asset getLivePhotosResource];
@@ -1556,7 +1570,7 @@
                 [handler reply:url.absoluteString];
                 return;
             }
-            [self fetchLivePhotosFile:asset handler:handler progressHandler:progressHandler withScheme:YES fileType:nil];
+            [self fetchLivePhotosFile:asset handler:handler progressHandler:progressHandler withScheme:YES fileType:nil networkAccessAllowed:YES];
             return;
         }
     }
@@ -1568,13 +1582,13 @@
                 [handler reply:url.absoluteString];
                 return;
             }
-            [self fetchLivePhotosFile:asset handler:handler progressHandler:progressHandler withScheme:YES fileType:nil];
+            [self fetchLivePhotosFile:asset handler:handler progressHandler:progressHandler withScheme:YES fileType:nil networkAccessAllowed:YES];
             return;
         }
     }
     
     if (asset.isVideo) {
-        [self fetchFullSizeVideo:asset handler:handler progressHandler:progressHandler withScheme:YES fileType:nil];
+        [self fetchFullSizeVideo:asset handler:handler progressHandler:progressHandler withScheme:YES fileType:nil networkAccessAllowed:YES];
     } else {
         [handler replyError:@"Only video type of assets can get a media url."];
         [self notifyProgress:progressHandler progress:0 state:PMProgressStateFailed];

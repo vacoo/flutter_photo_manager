@@ -46,12 +46,17 @@ typedef void (^AssetBlockResult)(PMAssetEntity *, NSObject *);
 
 - (void)clearCache;
 
-- (void)getThumbWithId:(NSString *)assetId option:(PMThumbLoadOption *)option resultHandler:(PMResultHandler *)handler progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler;
+- (void)getThumbWithId:(NSString *)assetId
+                option:(PMThumbLoadOption *)option
+  networkAccessAllowed:(BOOL)networkAccessAllowed
+         resultHandler:(PMResultHandler *)handler
+       progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler;
 
 - (void)getFullSizeFileWithId:(NSString *)assetId
                      isOrigin:(BOOL)isOrigin
                       subtype:(int)subtype
                      fileType:(AVFileType)fileType
+          networkAccessAllowed:(BOOL)networkAccessAllowed
                 resultHandler:(PMResultHandler *)handler
               progressHandler:(NSObject <PMProgressHandlerProtocol> *)progressHandler;
 
