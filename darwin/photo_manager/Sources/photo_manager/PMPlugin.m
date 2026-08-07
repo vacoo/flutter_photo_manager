@@ -352,7 +352,8 @@
         return QOS_CLASS_USER_INTERACTIVE;
     }
 
-    if ([method isEqualToString:@"getAssetListPaged"] ||
+    if ([method isEqualToString:@"getLatestAssetFromPath"] ||
+        [method isEqualToString:@"getAssetListPaged"] ||
         [method isEqualToString:@"getAssetListRange"] ||
         [method isEqualToString:@"getFullFile"] ||
         [method isEqualToString:@"getMediaUrl"] ||
@@ -419,6 +420,16 @@
                                                           type:requestType
                                                   filterOption:option];
         [handler reply:@(assetCount)];
+    } else if ([call.method isEqualToString:@"getLatestAssetFromPath"]) {
+        NSString *id = call.arguments[@"id"];
+        int type = [call.arguments[@"type"] intValue];
+        NSObject <PMBaseFilter> *option =
+            [PMConvertUtils convertMapToOptionContainer:call.arguments[@"option"]];
+        NSArray<PMAssetEntity *> *array =
+            [manager getLatestAssetFromPath:id type:type filterOption:option];
+        NSDictionary *dictionary =
+            [PMConvertUtils convertAssetToMap:array optionGroup:option];
+        [handler reply:dictionary];
     } else if ([call.method isEqualToString:@"getAssetListPaged"]) {
         NSString *id = call.arguments[@"id"];
         int type = [call.arguments[@"type"] intValue];

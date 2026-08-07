@@ -216,6 +216,20 @@ class AssetPathEntity {
     );
   }
 
+  /// Returns the newest asset in the album by creation date.
+  ///
+  /// iOS and macOS use an optimized PhotoKit query that fetches one asset.
+  /// Other platforms fall back to the regular first page query.
+  Future<AssetEntity?> getLatestAsset() async {
+    assert(albumType == 1, 'Only album can request for assets.');
+    if (!Platform.isIOS && !Platform.isMacOS) {
+      final List<AssetEntity> assets =
+          await getAssetListPaged(page: 0, size: 1);
+      return assets.isEmpty ? null : assets.first;
+    }
+    return plugin.getLatestAssetFromPath(this);
+  }
+
   /// Getting assets in range using [start] and [end].
   ///
   /// The [start] and [end] are similar to [String.substring], but it'll return

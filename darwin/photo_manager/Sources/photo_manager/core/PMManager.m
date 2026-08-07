@@ -265,6 +265,34 @@
 
 #pragma clang diagnostic pop
 
+- (NSArray<PMAssetEntity *> *)getLatestAssetFromPath:(NSString *)id type:(int)type filterOption:(NSObject<PMBaseFilter> *)filterOption {
+    PHFetchResult<PHAssetCollection *> *collectionResult =
+    [PHAssetCollection fetchAssetCollectionsWithLocalIdentifiers:@[id]
+                                                         options:nil];
+    if (!collectionResult || collectionResult.count == 0) {
+        return @[];
+    }
+
+    PHFetchOptions *assetOptions = [self getAssetOptions:type filterOption:filterOption];
+    assetOptions.fetchLimit = 1;
+    assetOptions.sortDescriptors = @[
+        [NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]
+    ];
+
+    PHFetchResult<PHAsset *> *assets =
+    [PHAsset fetchAssetsInAssetCollection:collectionResult.firstObject
+                                  options:assetOptions];
+    PHAsset *asset = assets.firstObject;
+    if (!asset) {
+        return @[];
+    }
+
+    PMAssetEntity *entity = [self convertPHAssetToAssetEntity:asset
+                                                    needTitle:filterOption.needTitle];
+    [cacheContainer putAssetEntity:entity];
+    return @[entity];
+}
+
 - (NSArray<PMAssetEntity *> *)getAssetListPaged:(NSString *)id type:(int)type page:(NSUInteger)page size:(NSUInteger)size filterOption:(NSObject<PMBaseFilter> *)filterOption {
     NSMutableArray<PMAssetEntity *> *result = [NSMutableArray new];
     

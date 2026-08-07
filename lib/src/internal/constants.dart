@@ -21,6 +21,7 @@ class PMConstants {
   /// These methods have [RequestType] params for Android 13+ (33+).
   static const String mFetchPathProperties = 'fetchPathProperties';
   static const String mGetAssetPathList = 'getAssetPathList';
+  static const String mGetLatestAssetFromPath = 'getLatestAssetFromPath';
   static const String mGetAssetListPaged = 'getAssetListPaged';
   static const String mGetAssetListRange = 'getAssetListRange';
 

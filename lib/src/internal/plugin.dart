@@ -207,6 +207,22 @@ class PhotoManagerPlugin with BasePlugin, IosPlugin, AndroidPlugin, OhosPlugin {
     return result;
   }
 
+  Future<AssetEntity?> getLatestAssetFromPath(AssetPathEntity path) async {
+    _throwIfCustomFilterNotSupported(path.filterOption);
+    final Map result = await _channel.invokeMethod(
+      PMConstants.mGetLatestAssetFromPath,
+      <String, dynamic>{
+        'id': path.id,
+        'type': path.type.value,
+        'option': path.filterOption?.toMap(),
+      },
+    );
+    final List<AssetEntity> assets = ConvertUtils.convertToAssetList(
+      result.cast(),
+    );
+    return assets.isEmpty ? null : assets.first;
+  }
+
   /// Obtain assets with the pagination.
   ///
   /// The length of returned assets might be less than requested.
