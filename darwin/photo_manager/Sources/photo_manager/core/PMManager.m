@@ -14,6 +14,28 @@
 #import "PMRequestTypeUtils.h"
 #import "PMResultHandler.h"
 
+@interface PMAssetFetchSession : NSObject
+
+@property(nonatomic, strong) PHFetchResult<PHAsset *> *assets;
+@property(nonatomic, assign) NSUInteger nextIndex;
+@property(nonatomic, assign) BOOL reverseOrder;
+@property(nonatomic, assign) BOOL needTitle;
+@property(nonatomic, strong) NSLock *lock;
+
+@end
+
+@implementation PMAssetFetchSession
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _lock = [NSLock new];
+    }
+    return self;
+}
+
+@end
+
 @implementation PMManager {
     PMCacheContainer *cacheContainer;
     
@@ -21,6 +43,9 @@
 
     // dict, key: cancelToken, value: PHImageRequestID
     NSMutableDictionary<NSString *, NSNumber*> *requestIdMap;
+
+    NSMutableDictionary<NSString *, PMAssetFetchSession *> *assetFetchSessions;
+    NSLock *assetFetchSessionsLock;
 }
 
 - (instancetype)init {
@@ -28,8 +53,87 @@
     if (self) {
         cacheContainer = [PMCacheContainer new];
         requestIdMap = [NSMutableDictionary new];
+        assetFetchSessions = [NSMutableDictionary new];
+        assetFetchSessionsLock = [NSLock new];
     }
     return self;
+}
+
+- (NSString *)startAssetFetchSession:(NSString *)id type:(int)type filterOption:(NSObject<PMBaseFilter> *)filterOption {
+    PHFetchResult<PHAssetCollection *> *fetchResult =
+    [PHAssetCollection fetchAssetCollectionsWithLocalIdentifiers:@[id]
+                                                         options:[PHFetchOptions new]];
+    if (fetchResult.count == 0) {
+        @throw [NSException exceptionWithName:@"AssetFetchSessionError"
+                                       reason:@"The asset collection does not exist."
+                                     userInfo:nil];
+    }
+
+    PHFetchOptions *assetOptions = [self getAssetOptions:type filterOption:filterOption];
+    PHFetchResult<PHAsset *> *assets =
+    [PHAsset fetchAssetsInAssetCollection:fetchResult.firstObject
+                                  options:assetOptions];
+
+    PMAssetFetchSession *session = [PMAssetFetchSession new];
+    session.assets = assets;
+    session.reverseOrder = assetOptions.sortDescriptors.count == 0;
+    session.needTitle = filterOption.needTitle;
+
+    NSString *sessionId = NSUUID.UUID.UUIDString;
+    [assetFetchSessionsLock lock];
+    assetFetchSessions[sessionId] = session;
+    [assetFetchSessionsLock unlock];
+
+    return sessionId;
+}
+
+- (NSArray<PMAssetEntity *> *)getAssetFetchSessionPage:(NSString *)sessionId size:(NSUInteger)size hasMore:(BOOL *)hasMore {
+    [assetFetchSessionsLock lock];
+    PMAssetFetchSession *session = assetFetchSessions[sessionId];
+    [assetFetchSessionsLock unlock];
+
+    if (session == nil) {
+        @throw [NSException exceptionWithName:@"AssetFetchSessionError"
+                                       reason:@"The asset fetch session does not exist."
+                                     userInfo:nil];
+    }
+
+    [session.lock lock];
+    @try {
+        NSUInteger count = session.assets.count;
+        NSUInteger startIndex = session.nextIndex;
+        NSUInteger endIndex = MIN(startIndex + size, count);
+        NSMutableArray<PMAssetEntity *> *result = [NSMutableArray new];
+
+        for (NSUInteger i = startIndex; i < endIndex; i++) {
+            NSUInteger index = session.reverseOrder ? count - i - 1 : i;
+            PHAsset *asset = session.assets[index];
+            PMAssetEntity *entity = [self convertPHAssetToAssetEntity:asset
+                                                            needTitle:session.needTitle];
+            [result addObject:entity];
+            [cacheContainer putAssetEntity:entity];
+        }
+
+        session.nextIndex = endIndex;
+        if (hasMore != NULL) {
+            *hasMore = endIndex < count;
+        }
+        return result;
+    } @finally {
+        [session.lock unlock];
+    }
+}
+
+- (void)finishAssetFetchSession:(NSString *)sessionId {
+    [assetFetchSessionsLock lock];
+    [assetFetchSessions removeObjectForKey:sessionId];
+    [assetFetchSessionsLock unlock];
+}
+
+- (void)clearAssetFetchSessions {
+    [assetFetchSessionsLock lock];
+    [assetFetchSessions removeAllObjects];
+    [assetFetchSessionsLock unlock];
 }
 
 - (PHCachingImageManager *)cachingManager {

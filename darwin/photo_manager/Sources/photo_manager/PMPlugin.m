@@ -46,6 +46,7 @@
     isDetach = YES;
     [channel setMethodCallHandler:nil];
     [self.notificationManager detach];
+    [self.manager clearAssetFetchSessions];
 }
 
 - (void)dealloc {
@@ -353,6 +354,9 @@
     }
 
     if ([method isEqualToString:@"getLatestAssetFromPath"] ||
+        [method isEqualToString:@"startAssetFetchSession"] ||
+        [method isEqualToString:@"getAssetFetchSessionPage"] ||
+        [method isEqualToString:@"finishAssetFetchSession"] ||
         [method isEqualToString:@"getAssetListPaged"] ||
         [method isEqualToString:@"getAssetListRange"] ||
         [method isEqualToString:@"getFullFile"] ||
@@ -430,6 +434,30 @@
         NSDictionary *dictionary =
             [PMConvertUtils convertAssetToMap:array optionGroup:option];
         [handler reply:dictionary];
+    } else if ([call.method isEqualToString:@"startAssetFetchSession"]) {
+        NSString *id = call.arguments[@"id"];
+        int type = [call.arguments[@"type"] intValue];
+        NSObject <PMBaseFilter> *option =
+            [PMConvertUtils convertMapToOptionContainer:call.arguments[@"option"]];
+        NSString *sessionId =
+            [manager startAssetFetchSession:id type:type filterOption:option];
+        [handler reply:@{@"sessionId": sessionId}];
+    } else if ([call.method isEqualToString:@"getAssetFetchSessionPage"]) {
+        NSString *sessionId = call.arguments[@"sessionId"];
+        NSUInteger size = [call.arguments[@"size"] unsignedIntegerValue];
+        NSObject <PMBaseFilter> *option =
+            [PMConvertUtils convertMapToOptionContainer:call.arguments[@"option"]];
+        BOOL hasMore = NO;
+        NSArray<PMAssetEntity *> *array =
+            [manager getAssetFetchSessionPage:sessionId size:size hasMore:&hasMore];
+        NSMutableDictionary *dictionary =
+            [[PMConvertUtils convertAssetToMap:array optionGroup:option] mutableCopy];
+        dictionary[@"hasMore"] = @(hasMore);
+        [handler reply:dictionary];
+    } else if ([call.method isEqualToString:@"finishAssetFetchSession"]) {
+        NSString *sessionId = call.arguments[@"sessionId"];
+        [manager finishAssetFetchSession:sessionId];
+        [handler reply:nil];
     } else if ([call.method isEqualToString:@"getAssetListPaged"]) {
         NSString *id = call.arguments[@"id"];
         int type = [call.arguments[@"type"] intValue];

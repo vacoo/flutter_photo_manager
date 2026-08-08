@@ -38,6 +38,14 @@ typedef void (^AssetBlockResult)(PMAssetEntity *, NSObject *);
 
 - (NSArray<PMAssetEntity *> *)getLatestAssetFromPath:(NSString *)id type:(int)type filterOption:(NSObject<PMBaseFilter> *)filterOption;
 
+- (NSString *)startAssetFetchSession:(NSString *)id type:(int)type filterOption:(NSObject<PMBaseFilter> *)filterOption;
+
+- (NSArray<PMAssetEntity *> *)getAssetFetchSessionPage:(NSString *)sessionId size:(NSUInteger)size hasMore:(BOOL *)hasMore;
+
+- (void)finishAssetFetchSession:(NSString *)sessionId;
+
+- (void)clearAssetFetchSessions;
+
 - (NSArray<PMAssetEntity *> *)getAssetListPaged:(NSString *)id type:(int)type page:(NSUInteger)page size:(NSUInteger)size filterOption:(NSObject<PMBaseFilter> *)filterOption;
 
 - (NSArray<PMAssetEntity *> *)getAssetListRange:(NSString *)id type:(int)type start:(NSUInteger)start end:(NSUInteger)end filterOption:(NSObject<PMBaseFilter> *)filterOption;

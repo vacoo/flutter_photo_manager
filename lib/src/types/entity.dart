@@ -216,6 +216,19 @@ class AssetPathEntity {
     );
   }
 
+  /// Starts a sequential fetch session for this album.
+  ///
+  /// On iOS and macOS the session reuses one sorted `PHFetchResult` for all
+  /// pages. Other platforms fall back to regular paged requests.
+  Future<AssetFetchSession> createAssetFetchSession() async {
+    assert(albumType == 1, 'Only album can request for assets.');
+    if (!Platform.isIOS && !Platform.isMacOS) {
+      return AssetFetchSession._(path: this);
+    }
+    final String sessionId = await plugin.startAssetFetchSession(this);
+    return AssetFetchSession._(path: this, nativeSessionId: sessionId);
+  }
+
   /// Returns the newest asset in the album by creation date.
   ///
   /// iOS and macOS use an optimized PhotoKit query that fetches one asset.
@@ -364,6 +377,80 @@ class AssetPathEntity {
   @override
   String toString() {
     return 'AssetPathEntity(id: $id, name: $name)';
+  }
+}
+
+@immutable
+class AssetFetchSessionPage {
+  const AssetFetchSessionPage({
+    required this.assets,
+    required this.hasMore,
+  });
+
+  final List<AssetEntity> assets;
+  final bool hasMore;
+}
+
+class AssetFetchSession {
+  AssetFetchSession._({required this.path, String? nativeSessionId})
+      : _nativeSessionId = nativeSessionId;
+
+  final AssetPathEntity path;
+  final String? _nativeSessionId;
+
+  int _fallbackPage = 0;
+  bool _hasMore = true;
+  bool _isClosed = false;
+
+  bool get hasMore => !_isClosed && _hasMore;
+
+  Future<AssetFetchSessionPage> getNext({required int size}) async {
+    assert(size > 0, 'Page size must be greater than 0.');
+    if (_isClosed) {
+      throw StateError('The asset fetch session is closed.');
+    }
+    if (!_hasMore) {
+      return const AssetFetchSessionPage(
+        assets: <AssetEntity>[],
+        hasMore: false,
+      );
+    }
+
+    final String? nativeSessionId = _nativeSessionId;
+    late final AssetFetchSessionPage result;
+    if (nativeSessionId != null) {
+      result = await plugin.getAssetFetchSessionPage(
+        path,
+        nativeSessionId,
+        size,
+      );
+    } else {
+      final List<AssetEntity> assets = await path.getAssetListPaged(
+        page: _fallbackPage,
+        size: size,
+      );
+      _fallbackPage++;
+      result = AssetFetchSessionPage(
+        assets: assets,
+        hasMore: assets.length == size,
+      );
+    }
+
+    _hasMore = result.hasMore;
+    return result;
+  }
+
+  Future<void> close() async {
+    if (_isClosed) {
+      return;
+    }
+    _isClosed = true;
+    _hasMore = false;
+
+    final String? nativeSessionId = _nativeSessionId;
+    if (nativeSessionId != null) {
+      await plugin.finishAssetFetchSession(nativeSessionId);
+    }
   }
 }
 

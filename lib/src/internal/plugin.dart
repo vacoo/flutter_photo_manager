@@ -223,6 +223,45 @@ class PhotoManagerPlugin with BasePlugin, IosPlugin, AndroidPlugin, OhosPlugin {
     return assets.isEmpty ? null : assets.first;
   }
 
+  Future<String> startAssetFetchSession(AssetPathEntity path) async {
+    _throwIfCustomFilterNotSupported(path.filterOption);
+    final Map result = await _channel.invokeMethod(
+      PMConstants.mStartAssetFetchSession,
+      <String, dynamic>{
+        'id': path.id,
+        'type': path.type.value,
+        'option': path.filterOption?.toMap(),
+      },
+    );
+    return result['sessionId'] as String;
+  }
+
+  Future<AssetFetchSessionPage> getAssetFetchSessionPage(
+    AssetPathEntity path,
+    String sessionId,
+    int size,
+  ) async {
+    final Map result = await _channel.invokeMethod(
+      PMConstants.mGetAssetFetchSessionPage,
+      <String, dynamic>{
+        'sessionId': sessionId,
+        'size': size,
+        'option': path.filterOption?.toMap(),
+      },
+    );
+    return AssetFetchSessionPage(
+      assets: ConvertUtils.convertToAssetList(result.cast()),
+      hasMore: result['hasMore'] == true,
+    );
+  }
+
+  Future<void> finishAssetFetchSession(String sessionId) {
+    return _channel.invokeMethod<void>(
+      PMConstants.mFinishAssetFetchSession,
+      <String, dynamic>{'sessionId': sessionId},
+    );
+  }
+
   /// Obtain assets with the pagination.
   ///
   /// The length of returned assets might be less than requested.

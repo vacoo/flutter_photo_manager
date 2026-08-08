@@ -66,4 +66,60 @@ void main() {
     expect(arguments['type'], RequestType.image.value);
     expect(arguments['option'], isNull);
   });
+
+  test('asset fetch session uses dedicated method channel calls', () async {
+    const MethodChannel channel = MethodChannel(
+      'com.fluttercandies/photo_manager',
+    );
+    final List<MethodCall> capturedCalls = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall call) async {
+      capturedCalls.add(call);
+      if (call.method == 'startAssetFetchSession') {
+        return <String, dynamic>{'sessionId': 'session-id'};
+      }
+      if (call.method == 'getAssetFetchSessionPage') {
+        return <String, dynamic>{
+          'data': <dynamic>[],
+          'hasMore': false,
+        };
+      }
+      return null;
+    });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+
+    final PhotoManagerPlugin plugin = PhotoManagerPlugin();
+    final AssetPathEntity path = AssetPathEntity(
+      id: 'album-id',
+      name: 'Album',
+      type: RequestType.image,
+    );
+
+    final String sessionId = await plugin.startAssetFetchSession(path);
+    final AssetFetchSessionPage page = await plugin.getAssetFetchSessionPage(
+      path,
+      sessionId,
+      1000,
+    );
+    await plugin.finishAssetFetchSession(sessionId);
+
+    expect(sessionId, 'session-id');
+    expect(page.assets, isEmpty);
+    expect(page.hasMore, isFalse);
+    expect(
+      capturedCalls.map((MethodCall call) => call.method),
+      <String>[
+        'startAssetFetchSession',
+        'getAssetFetchSessionPage',
+        'finishAssetFetchSession',
+      ],
+    );
+    expect(
+      (capturedCalls[1].arguments as Map<dynamic, dynamic>)['size'],
+      1000,
+    );
+  });
 }

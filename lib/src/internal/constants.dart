@@ -22,6 +22,9 @@ class PMConstants {
   static const String mFetchPathProperties = 'fetchPathProperties';
   static const String mGetAssetPathList = 'getAssetPathList';
   static const String mGetLatestAssetFromPath = 'getLatestAssetFromPath';
+  static const String mStartAssetFetchSession = 'startAssetFetchSession';
+  static const String mGetAssetFetchSessionPage = 'getAssetFetchSessionPage';
+  static const String mFinishAssetFetchSession = 'finishAssetFetchSession';
   static const String mGetAssetListPaged = 'getAssetListPaged';
   static const String mGetAssetListRange = 'getAssetListRange';
 
